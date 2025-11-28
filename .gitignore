@@ -1,0 +1,15 @@
+node_modules/
+.env
+.env.local
+.env.*.local
+dist/
+build/
+.next/
+.DS_Store
+*.log
+*.swp
+*.swo
+data/portal.db
+.idea/
+.vscode/
+*.iml
