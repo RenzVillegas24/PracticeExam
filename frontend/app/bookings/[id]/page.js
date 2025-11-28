@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import axios from 'axios';
 import Link from 'next/link';
 import { BookingDetailSkeleton } from '../../components/SkeletonLoading';
+import { clientCache } from '../../utils/clientCache';
 
 // Memoized MessageItem to prevent unnecessary re-renders
 const MessageItem = ({ message }) => {
@@ -35,74 +36,90 @@ export default function BookingDetailPage() {
   const params = useParams();
   const bookingId = params?.id;
 
-  // Fetch data function - memoized to prevent function recreation
-  const fetchData = useCallback(async () => {
-    const token = localStorage.getItem('authToken');
-    if (!token) {
-      router.push('/');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      // Parallel requests for better performance
-      const [bookingRes, messagesRes] = await Promise.all([
-        axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/bookings/${bookingId}`,
-          { 
-            headers: { Authorization: `Bearer ${token}` },
-            timeout: 10000 // 10 second timeout
-          }
-        ),
-        axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/messages/${bookingId}`,
-          { 
-            headers: { Authorization: `Bearer ${token}` },
-            timeout: 10000 // 10 second timeout
-          }
-        )
-      ]);
-
-      setBooking(bookingRes.data.booking);
-      setMessages(messagesRes.data.messages);
-      setError('');
-    } catch (err) {
-      setError('Failed to load booking details');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [bookingId, router]);
-
   useEffect(() => {
     if (!bookingId) return;
-    fetchData();
-  }, [bookingId, fetchData]);
 
-  const handleSendMessage = useCallback(async (e) => {
+    const fetchData = async () => {
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        router.push('/');
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+        
+        // Use client cache for booking detail
+        const bookingUrl = `${apiBase}/bookings/${bookingId}`;
+        const bookingCacheKey = clientCache.getCacheKey(bookingUrl, token);
+        
+        const booking = await clientCache.dedupedFetch(
+          bookingCacheKey,
+          () => axios.get(bookingUrl, {
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 10000
+          }).then(res => res.data.booking),
+          300 // 5 minute cache
+        );
+
+        // Messages can be fresh, shorter cache
+        const messagesUrl = `${apiBase}/messages/${bookingId}`;
+        const messagesCacheKey = clientCache.getCacheKey(messagesUrl, token);
+        
+        const messages = await clientCache.dedupedFetch(
+          messagesCacheKey,
+          () => axios.get(messagesUrl, {
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 10000
+          }).then(res => res.data.messages),
+          60 // 1 minute cache for messages
+        );
+
+        setBooking(booking);
+        setMessages(messages);
+        setError('');
+      } catch (err) {
+        setError('Failed to load booking details');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [bookingId, router]);
+
+  const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!messageInput.trim() || sendingMessage) return;
 
     const token = localStorage.getItem('authToken');
     setSendingMessage(true);
     try {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
       const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/messages/${bookingId}`,
+        `${apiBase}/messages/${bookingId}`,
         { message: messageInput },
         { 
           headers: { Authorization: `Bearer ${token}` },
-          timeout: 5000 // 5 second timeout
+          timeout: 5000
         }
       );
 
       setMessages([...messages, response.data]);
       setMessageInput('');
+
+      // Clear message cache after new message
+      const messagesUrl = `${apiBase}/messages/${bookingId}`;
+      const messagesCacheKey = clientCache.getCacheKey(messagesUrl, token);
+      clientCache.cache.delete(messagesCacheKey);
     } catch (err) {
       console.error('Failed to send message:', err);
     } finally {
       setSendingMessage(false);
     }
-  }, [messageInput, bookingId, messages, sendingMessage]);
+  };
 
   if (loading) {
     return <BookingDetailSkeleton />;

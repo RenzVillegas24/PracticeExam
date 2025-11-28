@@ -13,9 +13,22 @@ router.use(authenticateToken);
 router.get('/', async (req, res) => {
   try {
     const userId = req.user.userId;
-    const db = await getDatabase();
     
-    const user = await db.get('SELECT servicem8_id FROM users WHERE id = ?', userId);
+    // Check cache first before database query
+    const userCacheKey = `user_${userId}`;
+    let user = apiCache.get(userCacheKey);
+    
+    if (!user) {
+      const db = await getDatabase();
+      user = await db.get('SELECT servicem8_id FROM users WHERE id = ?', userId);
+      
+      // Cache user data for 30 minutes
+      if (user) {
+        apiCache.cache.set(userCacheKey, { value: user, expiresAt: Date.now() + 30 * 60 * 1000 });
+      }
+    } else {
+      console.log('[CACHE HIT] User data from cache');
+    }
 
     if (!user || !user.servicem8_id) {
       const mockBookings = [
@@ -37,13 +50,15 @@ router.get('/', async (req, res) => {
       return res.json({ bookings: mockBookings });
     }
 
-    // Check cache first
+    // Check cache for bookings
     const cacheKey = `bookings_${user.servicem8_id}`;
-    const cachedBookings = apiCache.get(cacheKey);
+    let cachedBookings = apiCache.get(cacheKey);
     if (cachedBookings) {
+      console.log('[CACHE HIT] Bookings list from cache');
       return res.json({ bookings: cachedBookings });
     }
 
+    console.log('[CACHE MISS] Fetching bookings from ServiceM8 API');
     try {
       const response = await axios.get(
         `https://api.servicem8.com/api_1.0/job.json?customer_id=${user.servicem8_id}`,
@@ -64,12 +79,13 @@ router.get('/', async (req, res) => {
         description: job.description || 'No description'
       }));
 
-      // Cache the result
+      // Cache the result with 5 minute TTL
       apiCache.set(cacheKey, bookings);
+      console.log('[CACHED] Bookings list stored in cache (5 min TTL)');
       
       return res.json({ bookings });
     } catch (apiError) {
-      console.log('ServiceM8 API failed, using mock data');
+      console.log('[API ERROR] ServiceM8 API failed, using mock data');
       const mockBookings = [
         {
           id: 'BOOK001',
@@ -99,9 +115,22 @@ router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.userId;
-    const db = await getDatabase();
-
-    const user = await db.get('SELECT servicem8_id FROM users WHERE id = ?', userId);
+    
+    // Check cache first before database query
+    const userCacheKey = `user_${userId}`;
+    let user = apiCache.get(userCacheKey);
+    
+    if (!user) {
+      const db = await getDatabase();
+      user = await db.get('SELECT servicem8_id FROM users WHERE id = ?', userId);
+      
+      // Cache user data for 30 minutes
+      if (user) {
+        apiCache.cache.set(userCacheKey, { value: user, expiresAt: Date.now() + 30 * 60 * 1000 });
+      }
+    } else {
+      console.log('[CACHE HIT] User data from cache (booking detail)');
+    }
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -109,11 +138,13 @@ router.get('/:id', async (req, res) => {
 
     // Check cache first for booking detail
     const cacheKey = `booking_${id}`;
-    const cachedBooking = apiCache.get(cacheKey);
+    let cachedBooking = apiCache.get(cacheKey);
     if (cachedBooking) {
+      console.log('[CACHE HIT] Booking detail from cache');
       return res.json({ booking: cachedBooking });
     }
 
+    console.log('[CACHE MISS] Fetching booking from ServiceM8 API');
     try {
       const response = await axios.get(
         `https://api.servicem8.com/api_1.0/job/${id}.json`,
@@ -144,11 +175,13 @@ router.get('/:id', async (req, res) => {
         attachments
       };
 
-      // Cache the result
+      // Cache the result with 5 minute TTL
       apiCache.set(cacheKey, booking);
+      console.log('[CACHED] Booking detail stored in cache (5 min TTL)');
       
       return res.json({ booking });
-    } catch {
+    } catch (err) {
+      console.log('[API ERROR] ServiceM8 API failed, using mock data');
       // Mock data with local attachment files
       const mockBooking = {
         id,

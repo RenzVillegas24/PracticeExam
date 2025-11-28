@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import Link from 'next/link';
 import { BookingsListSkeleton } from '../components/SkeletonLoading';
+import { clientCache } from '../utils/clientCache';
 
 export default function BookingsPage() {
   const [bookings, setBookings] = useState([]);
@@ -12,40 +13,47 @@ export default function BookingsPage() {
   const [error, setError] = useState('');
   const router = useRouter();
 
-  const fetchBookings = useCallback(async () => {
-    const token = localStorage.getItem('authToken');
-    if (!token) {
-      router.push('/');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/bookings`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          timeout: 10000 // 10 second timeout
-        }
-      );
-      setBookings(response.data.bookings);
-      setError('');
-    } catch (err) {
-      setError('Failed to load bookings');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [router]);
-
   useEffect(() => {
-    fetchBookings();
-  }, [fetchBookings]);
+    const fetchBookings = async () => {
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        router.push('/');
+        return;
+      }
 
-  const handleLogout = useCallback(() => {
-    localStorage.removeItem('authToken');
-    router.push('/');
+      try {
+        setLoading(true);
+        const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/bookings`;
+        const cacheKey = clientCache.getCacheKey(apiUrl, token);
+
+        // Use client cache with deduplication
+        const cachedBookings = await clientCache.dedupedFetch(
+          cacheKey,
+          () => axios.get(apiUrl, {
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 10000
+          }).then(res => res.data.bookings),
+          300 // 5 minute cache
+        );
+
+        setBookings(cachedBookings);
+        setError('');
+      } catch (err) {
+        setError('Failed to load bookings');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBookings();
   }, [router]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('authToken');
+    clientCache.clear();
+    router.push('/');
+  };
 
   const getStatusColor = (status) => {
     const colors = {
