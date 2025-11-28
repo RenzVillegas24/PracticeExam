@@ -43,79 +43,102 @@ export default function BookingsPage() {
     router.push('/');
   };
 
+  const getStatusColor = (status) => {
+    const colors = {
+      'scheduled': 'bg-blue-100 text-blue-800',
+      'completed': 'bg-green-100 text-green-800',
+      'pending': 'bg-yellow-100 text-yellow-800',
+      'cancelled': 'bg-red-100 text-red-800'
+    };
+    return colors[status?.toLowerCase()] || 'bg-gray-100 text-gray-800';
+  };
+
   return (
-    <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
-      <nav style={{
-        background: '#333',
-        color: 'white',
-        padding: '20px 40px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
-      }}>
-        <h1>Customer Portal</h1>
-        <button
-          onClick={handleLogout}
-          style={{
-            padding: '10px 20px',
-            background: '#e74c3c',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          Logout
-        </button>
+    <div className="min-h-screen bg-gray-50">
+      {/* Navigation */}
+      <nav className="bg-white shadow-md sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-primary">Portal</h1>
+          <button
+            onClick={handleLogout}
+            className="btn-danger text-sm"
+          >
+            Logout
+          </button>
+        </div>
       </nav>
 
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
-        <h2 style={{ marginBottom: '30px' }}>Your Bookings</h2>
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Header */}
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">Your Bookings</h2>
+          <p className="text-gray-600">View and manage all your service bookings</p>
+        </div>
 
-        {loading && <p>Loading bookings...</p>}
-        {error && <p style={{ color: 'red' }}>{error}</p>}
-
-        {!loading && bookings.length === 0 && (
-          <p style={{ color: '#666' }}>No bookings found.</p>
+        {/* Error State */}
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+            {error}
+          </div>
         )}
 
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-          gap: '20px'
-        }}>
-          {bookings.map((booking) => (
-            <Link key={booking.id} href={`/bookings/${booking.id}`}>
-              <div style={{
-                background: 'white',
-                padding: '20px',
-                borderRadius: '8px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                cursor: 'pointer',
-                transition: 'transform 0.2s, box-shadow 0.2s',
-                textDecoration: 'none',
-                color: 'inherit'
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.transform = 'translateY(-4px)';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
-              }}>
-                <h3 style={{ marginBottom: '10px', color: '#333' }}>{booking.name}</h3>
-                <p style={{ marginBottom: '8px', color: '#666', fontSize: '14px' }}>
-                  <strong>Status:</strong> {booking.status}
-                </p>
-                <p style={{ marginBottom: '8px', color: '#666', fontSize: '14px' }}>
-                  <strong>Date:</strong> {booking.date}
-                </p>
-                <p style={{ color: '#999', fontSize: '13px' }}>{booking.description}</p>
-              </div>
-            </Link>
-          ))}
-        </div>
+        {/* Loading State */}
+        {loading && (
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && bookings.length === 0 && (
+          <div className="text-center py-12">
+            <p className="text-gray-500 text-lg">No bookings found yet.</p>
+            <p className="text-gray-400 mt-2">Your service bookings will appear here.</p>
+          </div>
+        )}
+
+        {/* Bookings Grid */}
+        {!loading && bookings.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {bookings.map((booking) => (
+              <Link key={booking.id} href={`/bookings/${booking.id}`}>
+                <div className="card p-6 cursor-pointer hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 h-full flex flex-col">
+                  {/* Header */}
+                  <div className="mb-4">
+                    <h3 className="text-xl font-bold text-gray-900 mb-2 truncate">
+                      {booking.name}
+                    </h3>
+                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(booking.status)}`}>
+                      {booking.status}
+                    </span>
+                  </div>
+
+                  {/* Details */}
+                  <div className="space-y-3 flex-grow">
+                    <div>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</p>
+                      <p className="text-gray-700 font-medium">{booking.date}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Description</p>
+                      <p className="text-gray-600 text-sm line-clamp-2">
+                        {booking.description}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="mt-6 pt-4 border-t border-gray-200">
+                    <p className="text-sm text-primary font-semibold hover:underline">
+                      View Details →
+                    </p>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

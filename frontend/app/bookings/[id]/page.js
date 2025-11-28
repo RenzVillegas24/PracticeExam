@@ -10,22 +10,15 @@ function MessageItem({ message }) {
   const [formattedDate, setFormattedDate] = useState('');
 
   useEffect(() => {
-    // Format date on client-side only
     setFormattedDate(new Date(message.created_at).toLocaleString());
   }, [message.created_at]);
 
   return (
-    <div style={{
-      background: 'white',
-      padding: '12px',
-      borderRadius: '4px',
-      marginBottom: '10px',
-      borderLeft: '3px solid #667eea'
-    }}>
-      <p style={{ margin: '0 0 4px 0' }}>{message.message}</p>
-      <small style={{ color: '#999' }}>
+    <div className="bg-white p-4 rounded-lg border-l-4 border-primary mb-3 hover:shadow-md transition-shadow">
+      <p className="text-gray-800 font-medium">{message.message}</p>
+      <p className="text-xs text-gray-400 mt-2">
         {formattedDate || 'Loading...'}
-      </small>
+      </p>
     </div>
   );
 }
@@ -94,129 +87,138 @@ export default function BookingDetailPage() {
     }
   };
 
-  if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading...</div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
-      <nav style={{
-        background: '#333',
-        color: 'white',
-        padding: '20px 40px'
-      }}>
-        <Link href="/bookings" style={{ color: 'white', textDecoration: 'none' }}>
-          ← Back to Bookings
-        </Link>
+    <div className="min-h-screen bg-gray-50">
+      {/* Navigation */}
+      <nav className="bg-white shadow-md sticky top-0 z-50">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <Link href="/bookings" className="text-primary font-semibold hover:text-secondary flex items-center gap-2">
+            ← Back to Bookings
+          </Link>
+        </div>
       </nav>
 
-      <div style={{ maxWidth: '900px', margin: '0 auto', padding: '40px 20px' }}>
-        {error && <p style={{ color: 'red' }}>{error}</p>}
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+            {error}
+          </div>
+        )}
 
         {booking && (
-          <>
-            <div style={{
-              background: 'white',
-              padding: '30px',
-              borderRadius: '8px',
-              marginBottom: '30px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-            }}>
-              <h2 style={{ marginBottom: '20px' }}>{booking.name}</h2>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                <div>
-                  <strong>Status:</strong>
-                  <p style={{ color: '#667eea', fontSize: '16px' }}>{booking.status}</p>
-                </div>
-                <div>
-                  <strong>Date:</strong>
-                  <p style={{ fontSize: '14px' }}>{booking.date}</p>
-                </div>
-              </div>
-
-              <div>
-                <strong>Description:</strong>
-                <p style={{ marginTop: '8px', color: '#666', lineHeight: '1.6' }}>
-                  {booking.description}
-                </p>
-              </div>
-
-              {booking.attachments && booking.attachments.length > 0 && (
-                <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #eee' }}>
-                  <strong>Attachments:</strong>
-                  <div style={{ marginTop: '10px' }}>
-                    {booking.attachments.map((att) => (
-                      <div key={att.id} style={{ marginBottom: '8px' }}>
-                        <a href={att.url} style={{ color: '#667eea' }}>
-                          📄 {att.name}
-                        </a>
-                      </div>
-                    ))}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Booking Details */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Header Card */}
+              <div className="card p-8">
+                <div className="mb-6">
+                  <h1 className="text-4xl font-bold text-gray-900 mb-4">{booking.name}</h1>
+                  <div className="flex flex-wrap gap-4">
+                    <div>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</p>
+                      <p className="text-lg font-bold text-primary mt-1">{booking.status}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</p>
+                      <p className="text-lg font-bold text-gray-900 mt-1">{booking.date}</p>
+                    </div>
                   </div>
                 </div>
-              )}
-            </div>
 
-            {/* Messages Section */}
-            <div style={{
-              background: 'white',
-              padding: '30px',
-              borderRadius: '8px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-            }}>
-              <h3 style={{ marginBottom: '20px' }}>Messages</h3>
+                <div className="border-t border-gray-200 pt-6">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Description</p>
+                  <p className="text-gray-700 leading-relaxed text-base">
+                    {booking.description}
+                  </p>
+                </div>
 
-              <div style={{
-                background: '#f9f9f9',
-                padding: '20px',
-                borderRadius: '8px',
-                maxHeight: '400px',
-                overflowY: 'auto',
-                marginBottom: '20px',
-                minHeight: '200px'
-              }}>
-                {messages.length === 0 ? (
-                  <p style={{ color: '#999', textAlign: 'center' }}>No messages yet</p>
-                ) : (
-                  messages.map((msg) => (
-                    <MessageItem key={msg.id} message={msg} />
-                  ))
+                {/* Attachments */}
+                {booking.attachments && booking.attachments.length > 0 && (
+                  <div className="border-t border-gray-200 mt-6 pt-6">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Attachments</p>
+                    <div className="space-y-2">
+                      {booking.attachments.map((att) => (
+                        <a
+                          key={att.id}
+                          href={att.url}
+                          className="flex items-center gap-2 text-primary hover:text-secondary hover:underline transition-colors"
+                        >
+                          <span>📄</span>
+                          <span>{att.name}</span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
                 )}
-              </div>
 
-              <form onSubmit={handleSendMessage} style={{
-                display: 'flex',
-                gap: '10px'
-              }}>
-                <input
-                  type="text"
-                  value={messageInput}
-                  onChange={(e) => setMessageInput(e.target.value)}
-                  placeholder="Send a message..."
-                  style={{
-                    flex: 1,
-                    padding: '12px',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
-                    fontSize: '14px'
-                  }}
-                />
-                <button
-                  type="submit"
-                  style={{
-                    padding: '12px 20px',
-                    background: '#667eea',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontWeight: '600'
-                  }}
-                >
-                  Send
-                </button>
-              </form>
+                {/* Invoice & Receipt Links */}
+                <div className="border-t border-gray-200 mt-6 pt-6">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Documents</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Link
+                      href={`/bookings/${booking.id}/invoice`}
+                      className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg font-semibold transition-colors"
+                    >
+                      <span>🧾</span>
+                      <span>Invoice</span>
+                    </Link>
+                    <Link
+                      href={`/bookings/${booking.id}/receipt`}
+                      className="flex items-center justify-center gap-2 px-4 py-2 bg-green-50 text-green-700 hover:bg-green-100 rounded-lg font-semibold transition-colors"
+                    >
+                      <span>✓</span>
+                      <span>Receipt</span>
+                    </Link>
+                  </div>
+                </div>
+              </div>
             </div>
-          </>
+
+            {/* Messages Sidebar */}
+            <div className="lg:col-span-1">
+              <div className="card p-6 h-full flex flex-col">
+                <h2 className="text-xl font-bold text-gray-900 mb-4">Messages</h2>
+
+                {/* Messages List */}
+                <div className="flex-1 bg-gray-50 rounded-lg p-4 mb-4 overflow-y-auto max-h-96 space-y-2">
+                  {messages.length === 0 ? (
+                    <p className="text-center text-gray-400 text-sm py-8">
+                      No messages yet. Start a conversation!
+                    </p>
+                  ) : (
+                    messages.map((msg) => (
+                      <MessageItem key={msg.id} message={msg} />
+                    ))
+                  )}
+                </div>
+
+                {/* Message Input */}
+                <form onSubmit={handleSendMessage} className="space-y-3">
+                  <input
+                    type="text"
+                    value={messageInput}
+                    onChange={(e) => setMessageInput(e.target.value)}
+                    placeholder="Type a message..."
+                    className="input-field text-sm"
+                  />
+                  <button
+                    type="submit"
+                    className="btn-primary w-full text-sm"
+                  >
+                    Send
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>
