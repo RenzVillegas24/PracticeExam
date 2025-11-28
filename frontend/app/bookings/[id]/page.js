@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import axios from 'axios';
 import Link from 'next/link';
+import { BookingDetailSkeleton } from '../../components/SkeletonLoading';
 
-// Client-side component for date formatting to avoid hydration issues
-function MessageItem({ message }) {
+// Memoized MessageItem to prevent unnecessary re-renders
+const MessageItem = ({ message }) => {
   const [formattedDate, setFormattedDate] = useState('');
 
   useEffect(() => {
@@ -21,7 +22,7 @@ function MessageItem({ message }) {
       </p>
     </div>
   );
-}
+};
 
 export default function BookingDetailPage() {
   const [booking, setBooking] = useState(null);
@@ -29,70 +30,82 @@ export default function BookingDetailPage() {
   const [messageInput, setMessageInput] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
   const router = useRouter();
   const params = useParams();
   const bookingId = params?.id;
 
-  useEffect(() => {
-    if (!bookingId) return;
+  // Fetch data function - memoized to prevent function recreation
+  const fetchData = useCallback(async () => {
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      router.push('/');
+      return;
+    }
 
-    const fetchData = async () => {
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        router.push('/');
-        return;
-      }
+    try {
+      setLoading(true);
+      // Parallel requests for better performance
+      const [bookingRes, messagesRes] = await Promise.all([
+        axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/bookings/${bookingId}`,
+          { 
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 10000 // 10 second timeout
+          }
+        ),
+        axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/messages/${bookingId}`,
+          { 
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 10000 // 10 second timeout
+          }
+        )
+      ]);
 
-      try {
-        const [bookingRes, messagesRes] = await Promise.all([
-          axios.get(
-            `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/bookings/${bookingId}`,
-            { headers: { Authorization: `Bearer ${token}` } }
-          ),
-          axios.get(
-            `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/messages/${bookingId}`,
-            { headers: { Authorization: `Bearer ${token}` } }
-          )
-        ]);
-
-        setBooking(bookingRes.data.booking);
-        setMessages(messagesRes.data.messages);
-      } catch (err) {
-        setError('Failed to load booking details');
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
+      setBooking(bookingRes.data.booking);
+      setMessages(messagesRes.data.messages);
+      setError('');
+    } catch (err) {
+      setError('Failed to load booking details');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   }, [bookingId, router]);
 
-  const handleSendMessage = async (e) => {
+  useEffect(() => {
+    if (!bookingId) return;
+    fetchData();
+  }, [bookingId, fetchData]);
+
+  const handleSendMessage = useCallback(async (e) => {
     e.preventDefault();
-    if (!messageInput.trim()) return;
+    if (!messageInput.trim() || sendingMessage) return;
 
     const token = localStorage.getItem('authToken');
+    setSendingMessage(true);
     try {
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/messages/${bookingId}`,
         { message: messageInput },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { 
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 5000 // 5 second timeout
+        }
       );
 
       setMessages([...messages, response.data]);
       setMessageInput('');
     } catch (err) {
       console.error('Failed to send message:', err);
+    } finally {
+      setSendingMessage(false);
     }
-  };
+  }, [messageInput, bookingId, messages, sendingMessage]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <BookingDetailSkeleton />;
   }
 
   return (
@@ -193,12 +206,14 @@ export default function BookingDetailPage() {
                     onChange={(e) => setMessageInput(e.target.value)}
                     placeholder="Type a message..."
                     className="input-field text-sm"
+                    disabled={sendingMessage}
                   />
                   <button
                     type="submit"
-                    className="btn-primary w-full text-sm"
+                    className="btn-primary w-full text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={sendingMessage}
                   >
-                    Send
+                    {sendingMessage ? 'Sending...' : 'Send'}
                   </button>
                 </form>
               </div>

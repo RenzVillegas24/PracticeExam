@@ -1,5 +1,7 @@
 # Customer Portal MVP - Setup & Deployment Guide
 
+> **👉 NEW: See [QUICK_START.md](./QUICK_START.md) for a fast TL;DR or [RUN_GUIDE.md](./RUN_GUIDE.md) for detailed shell script documentation**
+
 ## Quick Start (Local Development)
 
 ### Prerequisites

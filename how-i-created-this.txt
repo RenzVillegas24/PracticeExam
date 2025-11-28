@@ -1,1 +1,2 @@
-I've used Github Copilot with Claude Haiku 4.5 for faster coding
+I've used Github Copilot with Claude Haiku 4.5 for faster coding. This makes me create a faster workflow for the project. This created some documentations, improved the codes and made the UI much user friendly.
+THe coding will definitely be done for a couple of days can be created within hours using this method.

@@ -2,6 +2,7 @@ import express from 'express';
 import axios from 'axios';
 import { getDatabase } from '../db/database.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { apiCache } from '../utils/cache.js';
 
 const router = express.Router();
 
@@ -36,6 +37,13 @@ router.get('/', async (req, res) => {
       return res.json({ bookings: mockBookings });
     }
 
+    // Check cache first
+    const cacheKey = `bookings_${user.servicem8_id}`;
+    const cachedBookings = apiCache.get(cacheKey);
+    if (cachedBookings) {
+      return res.json({ bookings: cachedBookings });
+    }
+
     try {
       const response = await axios.get(
         `https://api.servicem8.com/api_1.0/job.json?customer_id=${user.servicem8_id}`,
@@ -43,7 +51,8 @@ router.get('/', async (req, res) => {
           headers: {
             'Authorization': `Bearer ${process.env.SERVICEM8_API_KEY}`,
             'Content-Type': 'application/json'
-          }
+          },
+          timeout: 5000 // 5 second timeout to fail fast
         }
       );
 
@@ -55,6 +64,9 @@ router.get('/', async (req, res) => {
         description: job.description || 'No description'
       }));
 
+      // Cache the result
+      apiCache.set(cacheKey, bookings);
+      
       return res.json({ bookings });
     } catch (apiError) {
       console.log('ServiceM8 API failed, using mock data');
@@ -95,6 +107,13 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    // Check cache first for booking detail
+    const cacheKey = `booking_${id}`;
+    const cachedBooking = apiCache.get(cacheKey);
+    if (cachedBooking) {
+      return res.json({ booking: cachedBooking });
+    }
+
     try {
       const response = await axios.get(
         `https://api.servicem8.com/api_1.0/job/${id}.json`,
@@ -102,7 +121,8 @@ router.get('/:id', async (req, res) => {
           headers: {
             'Authorization': `Bearer ${process.env.SERVICEM8_API_KEY}`,
             'Content-Type': 'application/json'
-          }
+          },
+          timeout: 5000 // 5 second timeout
         }
       );
 
@@ -115,16 +135,19 @@ router.get('/:id', async (req, res) => {
         url: `${process.env.API_URL || 'http://localhost:5000'}/attachments/${att.id}`
       }));
       
-      return res.json({
-        booking: {
-          id: job.id,
-          name: job.name,
-          status: job.status,
-          date: job.created_date,
-          description: job.description,
-          attachments
-        }
-      });
+      const booking = {
+        id: job.id,
+        name: job.name,
+        status: job.status,
+        date: job.created_date,
+        description: job.description,
+        attachments
+      };
+
+      // Cache the result
+      apiCache.set(cacheKey, booking);
+      
+      return res.json({ booking });
     } catch {
       // Mock data with local attachment files
       const mockBooking = {
@@ -138,6 +161,9 @@ router.get('/:id', async (req, res) => {
           { id: 'ATT002', name: 'receipt.pdf', url: `${process.env.API_URL || 'http://localhost:5000'}/attachments/receipt.pdf` }
         ]
       };
+
+      // Cache the mock result too
+      apiCache.set(cacheKey, mockBooking);
 
       return res.json({ booking: mockBooking });
     }

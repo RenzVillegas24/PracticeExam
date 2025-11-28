@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import Link from 'next/link';
+import { BookingsListSkeleton } from '../components/SkeletonLoading';
 
 export default function BookingsPage() {
   const [bookings, setBookings] = useState([]);
@@ -11,37 +12,40 @@ export default function BookingsPage() {
   const [error, setError] = useState('');
   const router = useRouter();
 
-  useEffect(() => {
-    const fetchBookings = async () => {
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        router.push('/');
-        return;
-      }
+  const fetchBookings = useCallback(async () => {
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      router.push('/');
+      return;
+    }
 
-      try {
-        const response = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/bookings`,
-          {
-            headers: { Authorization: `Bearer ${token}` }
-          }
-        );
-        setBookings(response.data.bookings);
-      } catch (err) {
-        setError('Failed to load bookings');
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchBookings();
+    try {
+      setLoading(true);
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/bookings`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 10000 // 10 second timeout
+        }
+      );
+      setBookings(response.data.bookings);
+      setError('');
+    } catch (err) {
+      setError('Failed to load bookings');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   }, [router]);
 
-  const handleLogout = () => {
+  useEffect(() => {
+    fetchBookings();
+  }, [fetchBookings]);
+
+  const handleLogout = useCallback(() => {
     localStorage.removeItem('authToken');
     router.push('/');
-  };
+  }, [router]);
 
   const getStatusColor = (status) => {
     const colors = {
@@ -52,6 +56,10 @@ export default function BookingsPage() {
     };
     return colors[status?.toLowerCase()] || 'bg-gray-100 text-gray-800';
   };
+
+  if (loading) {
+    return <BookingsListSkeleton />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -80,13 +88,6 @@ export default function BookingsPage() {
         {error && (
           <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
             {error}
-          </div>
-        )}
-
-        {/* Loading State */}
-        {loading && (
-          <div className="flex justify-center items-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
           </div>
         )}
 

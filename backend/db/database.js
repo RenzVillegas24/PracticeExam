@@ -57,5 +57,16 @@ export async function initializeDatabase() {
     )
   `);
 
+  // Create indexes for faster queries
+  await database.exec(`
+    CREATE INDEX IF NOT EXISTS idx_messages_user_booking 
+    ON messages(user_id, booking_id, created_at DESC)
+  `);
+
+  await database.exec(`
+    CREATE INDEX IF NOT EXISTS idx_sessions_token 
+    ON sessions(token)
+  `);
+
   console.log('Database initialized');
 }

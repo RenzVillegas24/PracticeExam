@@ -13,8 +13,9 @@ router.get('/:booking_id', async (req, res) => {
     const userId = req.user.userId;
     const db = await getDatabase();
 
+    // Optimized query using index: user_id, booking_id, created_at DESC
     const messages = await db.all(
-      'SELECT id, message, created_at FROM messages WHERE user_id = ? AND booking_id = ? ORDER BY created_at ASC',
+      'SELECT id, message, created_at FROM messages WHERE user_id = ? AND booking_id = ? ORDER BY created_at ASC LIMIT 100',
       userId, booking_id
     );
 
