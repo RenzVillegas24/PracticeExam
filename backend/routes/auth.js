@@ -4,7 +4,6 @@ import { getDatabase } from '../db/database.js';
 
 const router = express.Router();
 
-// Mock user data for demo purposes
 const mockUsers = {
   'test@example.com': {
     phone: '0123456789',
@@ -19,7 +18,6 @@ router.post('/login', async (req, res) => {
     return res.status(400).json({ error: 'Email and phone required' });
   }
 
-  // Verify credentials
   const user = mockUsers[email];
   if (!user || user.phone !== phone) {
     return res.status(401).json({ error: 'Invalid credentials' });
@@ -28,7 +26,6 @@ router.post('/login', async (req, res) => {
   try {
     const db = await getDatabase();
     
-    // Get or create user in database
     let userRecord = await db.get('SELECT id FROM users WHERE email = ?', email);
 
     if (!userRecord) {
@@ -39,14 +36,12 @@ router.post('/login', async (req, res) => {
       userRecord = { id: result.lastID };
     }
 
-    // Create JWT token
     const token = jwt.sign(
       { userId: userRecord.id, email },
       process.env.JWT_SECRET || 'dev-secret',
       { expiresIn: '24h' }
     );
 
-    // Store session
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
     await db.run(
       'INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)',

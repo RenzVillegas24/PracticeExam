@@ -1,42 +1,29 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-echo "🛑 Customer Portal MVP - Stop Script"
-echo "===================================="
-echo ""
+set -euo pipefail
+echo "Stopping services..."
 
-# Function to kill process on port
-kill_port() {
-    local port=$1
-    local name=$2
-    if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null ; then
-        local pid=$(lsof -Pi :$port -sTCP:LISTEN -t)
-        echo "🛑 Stopping $name on port $port (PID: $pid)"
-        kill $pid 2>/dev/null || true
-        sleep 2
-        if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null ; then
-            echo "⚠️  Force killing $name..."
-            kill -9 $pid 2>/dev/null || true
+pkill_on_port() {
+    port=$1
+    if pids=$(lsof -Pi :${port} -sTCP:LISTEN -t 2>/dev/null); then
+        echo "Killing processes on port ${port}: ${pids}"
+        kill ${pids} 2>/dev/null || true
+        sleep 1
+        # Force kill if still running
+        if lsof -Pi :${port} -sTCP:LISTEN -t >/dev/null; then
+            kill -9 ${pids} 2>/dev/null || true
         fi
-        echo "✅ $name stopped"
     else
-        echo "ℹ️  $name not running on port $port"
+        echo "No process on port ${port}"
     fi
 }
 
-# Stop services
-kill_port 3000 "Frontend"
-kill_port 5000 "Backend"
+pkill_on_port 3000
+pkill_on_port 5000
 
-# Clean up log files (optional)
-if [ "$1" = "--clean" ]; then
-    echo ""
-    echo "🧹 Cleaning up log files..."
-    rm -f backend.log frontend.log
-    echo "✅ Log files cleaned"
+if [ "${1-}" = "--clean" ]; then
+    rm -f backend.log frontend.log || true
+    echo "Logs cleaned"
 fi
 
-echo ""
-echo "👋 All services stopped!"
-echo ""
-echo "💡 Tip: Use 'bash run.sh' to start services again"
-echo "===================================="
+echo "Done"

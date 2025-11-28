@@ -1,72 +1,32 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
-echo "🚀 Customer Portal MVP - Setup Script"
-echo "======================================"
-echo ""
+echo "Running setup..."
 
-# Check Node.js
-if ! command -v node &> /dev/null; then
-    echo "❌ Node.js is not installed. Please install Node.js 18+ first."
+if ! command -v node >/dev/null 2>&1; then
+    echo "Node.js is required (18+). Install it and retry."
     exit 1
 fi
 
-echo "✅ Node.js version: $(node --version)"
-echo ""
+echo "Node: $(node --version)"
 
-# Setup Backend
-echo "📦 Setting up Backend..."
-cd backend
+install_deps() {
+    dir=$1
+    envfile=$2
+    echo "Setting up ${dir}"
+    cd ${dir}
+    if [ ! -f "${envfile}" ] && [ -f .env.example ]; then
+        cp .env.example ${envfile}
+        echo "Created ${dir}/${envfile}"
+    fi
+    npm install --silent
+    cd - >/dev/null
+}
 
-if [ -f ".env" ]; then
-    echo "ℹ️  .env already exists, skipping..."
-else
-    cp .env.example .env
-    echo "📝 Created .env file (update with ServiceM8 credentials if needed)"
-fi
+install_deps backend .env
+install_deps frontend .env.local
 
-echo "📥 Installing backend dependencies..."
-npm install --quiet
-
-echo "✅ Backend setup complete!"
-echo ""
-
-# Setup Frontend
-cd ../frontend
-
-if [ -f ".env.local" ]; then
-    echo "ℹ️  .env.local already exists, skipping..."
-else
-    cp .env.example .env.local
-    echo "📝 Created .env.local file"
-fi
-
-echo "📥 Installing frontend dependencies..."
-npm install --quiet
-
-echo "✅ Frontend setup complete!"
-echo ""
-
-# Print next steps
-echo "======================================"
-echo "✨ Setup Complete!"
-echo ""
-echo "📋 To start the application:"
-echo ""
-echo "Terminal 1 - Backend:"
-echo "  cd backend"
-echo "  npm run dev"
-echo ""
-echo "Terminal 2 - Frontend:"
-echo "  cd frontend"
-echo "  npm run dev"
-echo ""
-echo "🌐 Then open: http://localhost:3000"
-echo ""
-echo "🔑 Demo Credentials:"
-echo "  Email: test@example.com"
-echo "  Phone: 0123456789"
-echo ""
-echo "📚 For more information, see README.md"
-echo "======================================"
+echo "Setup complete. Run:"
+echo "  bash run.sh"
+echo "Then open: http://localhost:3000"
