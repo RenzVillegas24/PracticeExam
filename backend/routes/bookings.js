@@ -107,6 +107,14 @@ router.get('/:id', async (req, res) => {
       );
 
       const job = response.data;
+      
+      // Extract attachments from ServiceM8 API response
+      const attachments = (job.attachments || []).map(att => ({
+        id: att.id || Math.random().toString(36).substr(2, 9),
+        name: att.name || 'attachment',
+        url: `${process.env.API_URL || 'http://localhost:5000'}/attachments/${att.id}`
+      }));
+      
       return res.json({
         booking: {
           id: job.id,
@@ -114,19 +122,20 @@ router.get('/:id', async (req, res) => {
           status: job.status,
           date: job.created_date,
           description: job.description,
-          attachments: job.attachments || []
+          attachments
         }
       });
     } catch {
+      // Mock data with local attachment files
       const mockBooking = {
         id,
         name: 'Service Booking',
         status: 'Completed',
         date: '2025-11-20',
-        description: 'Professional service completed',
+        description: 'Professional service completed successfully. All work was completed to specification.',
         attachments: [
-          { id: 'ATT001', name: 'invoice.pdf', url: '/files/invoice.pdf' },
-          { id: 'ATT002', name: 'receipt.pdf', url: '/files/receipt.pdf' }
+          { id: 'ATT001', name: 'invoice.pdf', url: `${process.env.API_URL || 'http://localhost:5000'}/attachments/invoice.pdf` },
+          { id: 'ATT002', name: 'receipt.pdf', url: `${process.env.API_URL || 'http://localhost:5000'}/attachments/receipt.pdf` }
         ]
       };
 

@@ -149,36 +149,21 @@ export default function BookingDetailPage() {
                         <a
                           key={att.id}
                           href={att.url}
-                          className="flex items-center gap-2 text-primary hover:text-secondary hover:underline transition-colors"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-3 p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors group"
                         >
-                          <span>📄</span>
-                          <span>{att.name}</span>
+                          <span className="text-lg">📄</span>
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-gray-800 group-hover:text-primary">{att.name}</p>
+                            <p className="text-xs text-gray-500">Click to view</p>
+                          </div>
+                          <span className="text-primary group-hover:text-secondary">→</span>
                         </a>
                       ))}
                     </div>
                   </div>
                 )}
-
-                {/* Invoice & Receipt Links */}
-                <div className="border-t border-gray-200 mt-6 pt-6">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Documents</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Link
-                      href={`/bookings/${booking.id}/invoice`}
-                      className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg font-semibold transition-colors"
-                    >
-                      <span>🧾</span>
-                      <span>Invoice</span>
-                    </Link>
-                    <Link
-                      href={`/bookings/${booking.id}/receipt`}
-                      className="flex items-center justify-center gap-2 px-4 py-2 bg-green-50 text-green-700 hover:bg-green-100 rounded-lg font-semibold transition-colors"
-                    >
-                      <span>✓</span>
-                      <span>Receipt</span>
-                    </Link>
-                  </div>
-                </div>
               </div>
             </div>
 
